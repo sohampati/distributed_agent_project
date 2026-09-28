@@ -1,6 +1,7 @@
 package com.agentexecutor.api.error;
 
 import com.agentexecutor.api.github.RepositoryValidationException;
+import com.agentexecutor.api.task.TaskNotFoundException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -31,6 +32,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         HttpHeaders headers = new HttpHeaders();
         e.retryAfter().ifPresent(retryAfter -> headers.set(HttpHeaders.RETRY_AFTER, String.valueOf(retryAfter.toSeconds())));
         return ResponseEntity.status(e.error().status()).headers(headers).body(problem);
+    }
+
+    @ExceptionHandler(TaskNotFoundException.class)
+    ResponseEntity<ProblemDetail> handleTaskNotFound(TaskNotFoundException e) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
+        problem.setTitle("Task not found");
+        problem.setProperty("code", "TASK_NOT_FOUND");
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
     }
 
     @Override

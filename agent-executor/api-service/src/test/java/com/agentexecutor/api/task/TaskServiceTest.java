@@ -10,6 +10,8 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -62,6 +64,22 @@ class TaskServiceTest {
         Task second = service.create("https://github.com/example/project", "two");
 
         assertThat(first.getId()).isNotEqualTo(second.getId());
+    }
+
+    @Test
+    void getReturnsExistingTask() {
+        Task task = Task.queued(UUID.randomUUID(), "https://github.com/example/project", "prompt", LocalDateTime.now());
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
+
+        assertThat(service.get(task.getId())).isSameAs(task);
+    }
+
+    @Test
+    void getUnknownTaskThrows() {
+        UUID id = UUID.randomUUID();
+        when(taskRepository.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.get(id)).isInstanceOf(TaskNotFoundException.class);
     }
 
     @Test

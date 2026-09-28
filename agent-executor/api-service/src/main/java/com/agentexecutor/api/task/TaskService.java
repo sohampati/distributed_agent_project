@@ -39,4 +39,8 @@ public class TaskService {
         log.info("Queued task {} for {}", task.getId(), canonicalUrl);
         return task;
     }
+
+    public Task get(UUID id) {
+        return taskRepository.findById(id).orElseThrow(() -> new TaskNotFoundException(id));
+    }
 }

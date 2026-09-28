@@ -60,3 +60,22 @@ createdb -U postgres agent_executor_test   # once
 ```
 
 Integration tests run against `agent_executor_test` (override with `TEST_DB_URL`); Flyway builds its schema and each test clears `tasks`. GitHub is mocked in tests.
+
+## End-to-end tests
+
+```bash
+./mvnw verify -Pe2e                                              # unit + integration + E2E
+E2E_PRIVATE_REPO=https://github.com/<you>/<private-repo> ./mvnw verify -Pe2e   # also cover a private repo
+E2E_KEEP_DATA=true ./mvnw verify -Pe2e                           # keep E2E rows to inspect with psql
+```
+
+E2E tests (`src/test/java/.../e2e/*E2E.java`) start the real app on a random port and call it over HTTP, against the **real** database (`DB_URL`, default `distributed_agent_project`) and the **real** GitHub API (`GITHUB_TOKEN`). Nothing is mocked. They are not part of `./mvnw test`.
+
+**Cleanup** (after every test, pass or fail, so existing data is untouched):
+1. Every task created through the E2E client (`POST /tasks` → 202) is deleted by id. Other registered cleanups run too, newest first; if one fails the rest still run and the test reports it.
+2. Safety net: any row whose prompt starts with this run's `[e2e <runId>]` tag is deleted.
+3. Once per run, `[e2e …]` rows older than an hour (from a run that was killed mid-test) are swept.
+
+`E2ECleanupE2E` tests the cleanup itself. Find leftovers with `SELECT * FROM tasks WHERE prompt LIKE '[e2e %';`.
+
+**Adding a route:** create `<Route>E2E extends E2ETestBase`. The base provides `api` (HTTP client), `prompt(label)` (tagged test data), `createTask(...)`, `taskRow(id)` / `countTasksWithPrompt(...)` (DB checks), `assertProblem(response, status, code)` (error contract), `requireEnv(...)` (skip when config is missing) and `registerCleanup(description, action)` — call it for anything the new route creates that isn't a task (tasks are tracked automatically).

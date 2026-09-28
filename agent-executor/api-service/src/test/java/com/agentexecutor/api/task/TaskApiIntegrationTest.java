@@ -18,6 +18,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
@@ -26,6 +27,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -78,6 +80,40 @@ class TaskApiIntegrationTest {
         assertThat(row.get("completed_at")).isNull();
         LocalDateTime createdAt = ((java.sql.Timestamp) row.get("created_at")).toLocalDateTime();
         assertThat(createdAt).isBetween(before, LocalDateTime.now(ZoneOffset.UTC));
+    }
+
+    @Test
+    void getReturnsWhatPostCreated() throws Exception {
+        when(gitHubClient.getRepository(any()))
+                .thenReturn(new GitHubRepository("example/project", "https://github.com/example/project", false, false, false));
+
+        String location = mockMvc.perform(post("/tasks").contentType(MediaType.APPLICATION_JSON).content("""
+                        {"repository_url": "https://github.com/example/project", "prompt": "round trip"}
+                        """))
+                .andExpect(status().isAccepted())
+                .andReturn().getResponse().getHeader("Location");
+        LocalDateTime storedCreatedAt = jdbcTemplate.queryForObject("SELECT created_at FROM tasks", LocalDateTime.class);
+
+        // Follow the Location header, as a client would.
+        String body = mockMvc.perform(get(location))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.task_id").value(location.substring(location.lastIndexOf('/') + 1)))
+                .andExpect(jsonPath("$.repository_url").value("https://github.com/example/project"))
+                .andExpect(jsonPath("$.prompt").value("round trip"))
+                .andExpect(jsonPath("$.status").value("QUEUED"))
+                .andExpect(jsonPath("$.worker_id").doesNotExist())
+                .andReturn().getResponse().getContentAsString();
+
+        // Compare as instants: the JSON drops trailing zeros from the fraction (.550860 -> .55086).
+        OffsetDateTime createdAt = OffsetDateTime.parse(JsonPath.read(body, "$.created_at"));
+        assertThat(createdAt).isEqualTo(storedCreatedAt.atOffset(ZoneOffset.UTC));
+    }
+
+    @Test
+    void getUnknownTaskIs404() throws Exception {
+        mockMvc.perform(get("/tasks/{id}", UUID.randomUUID()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("TASK_NOT_FOUND"));
     }
 
     @Test

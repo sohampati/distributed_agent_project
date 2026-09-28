@@ -87,4 +87,24 @@
 		</plugins>
 	</build>
 
+	<profiles>
+		<!-- End-to-end tests (*E2E.java): real app, real database, real GitHub. Run with: ./mvnw verify -Pe2e -->
+		<profile>
+			<id>e2e</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-failsafe-plugin</artifactId>
+						<configuration>
+							<includes>
+								<include>**/*E2E.java</include>
+							</includes>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+
 </project>

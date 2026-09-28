@@ -18,6 +18,7 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -111,6 +112,44 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.code").value(error.name()))
                 .andExpect(jsonPath("$.title").value(error.title()))
                 .andExpect(jsonPath("$.detail").value("detail message"));
+    }
+
+    @Test
+    void getReturnsFullTaskWithUtcTimestamps() throws Exception {
+        UUID id = UUID.fromString("8f7c2b9e-1111-4222-8333-444455556666");
+        when(taskService.get(id)).thenReturn(Task.queued(id, "https://github.com/example/project", "Add a health endpoint",
+                LocalDateTime.of(2026, 9, 28, 15, 1, 33, 550_863_000)));
+
+        mockMvc.perform(get("/tasks/{id}", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.task_id").value(id.toString()))
+                .andExpect(jsonPath("$.repository_url").value("https://github.com/example/project"))
+                .andExpect(jsonPath("$.prompt").value("Add a health endpoint"))
+                .andExpect(jsonPath("$.status").value("QUEUED"))
+                .andExpect(jsonPath("$.created_at").value("2026-09-28T15:01:33.550863Z"))
+                .andExpect(jsonPath("$.worker_id").doesNotExist())
+                .andExpect(jsonPath("$.started_at").doesNotExist())
+                .andExpect(jsonPath("$.completed_at").doesNotExist());
+    }
+
+    @Test
+    void getUnknownTaskIs404() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(taskService.get(id)).thenThrow(new TaskNotFoundException(id));
+
+        mockMvc.perform(get("/tasks/{id}", id))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("TASK_NOT_FOUND"))
+                .andExpect(jsonPath("$.detail").value("Task " + id + " does not exist"));
+    }
+
+    @Test
+    void getWithNonUuidIdIs400() throws Exception {
+        mockMvc.perform(get("/tasks/{id}", "not-a-uuid"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("BAD_REQUEST"));
+
+        verifyNoInteractions(taskService);
     }
 
     @Test
