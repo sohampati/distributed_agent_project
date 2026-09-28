@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: api-service
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/distributed_agent_project}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:${PGPASSWORD:}}
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Flyway owns the schema; Hibernate only checks the entity matches it.
+      ddl-auto: validate
+  flyway:
+    # The tasks table predates Flyway in existing databases: mark them as V1 instead of re-creating it.
+    baseline-on-migrate: true
+    baseline-version: 1
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+
+github:
+  api-url: https://api.github.com
+  token: ${GITHUB_TOKEN:}
+  connect-timeout: 2s
+  read-timeout: 3s

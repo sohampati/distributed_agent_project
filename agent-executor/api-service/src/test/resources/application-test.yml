@@ -1,0 +1,6 @@
+spring:
+  datasource:
+    url: ${TEST_DB_URL:jdbc:postgresql://localhost:5432/agent_executor_test}
+
+github:
+  token: test-token
