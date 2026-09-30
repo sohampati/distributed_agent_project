@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -127,9 +128,9 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.prompt").value("Add a health endpoint"))
                 .andExpect(jsonPath("$.status").value("QUEUED"))
                 .andExpect(jsonPath("$.created_at").value("2026-09-28T15:01:33.550863Z"))
-                .andExpect(jsonPath("$.worker_id").doesNotExist())
-                .andExpect(jsonPath("$.started_at").doesNotExist())
-                .andExpect(jsonPath("$.completed_at").doesNotExist());
+                .andExpect(jsonPath("$.worker_id").value(nullValue()))
+                .andExpect(jsonPath("$.started_at").value(nullValue()))
+                .andExpect(jsonPath("$.completed_at").value(nullValue()));
     }
 
     @Test

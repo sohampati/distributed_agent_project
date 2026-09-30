@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -101,7 +102,7 @@ class TaskApiIntegrationTest {
                 .andExpect(jsonPath("$.repository_url").value("https://github.com/example/project"))
                 .andExpect(jsonPath("$.prompt").value("round trip"))
                 .andExpect(jsonPath("$.status").value("QUEUED"))
-                .andExpect(jsonPath("$.worker_id").doesNotExist())
+                .andExpect(jsonPath("$.worker_id").value(nullValue()))
                 .andReturn().getResponse().getContentAsString();
 
         // Compare as instants: the JSON drops trailing zeros from the fraction (.550860 -> .55086).
