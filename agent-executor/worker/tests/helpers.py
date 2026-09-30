@@ -6,6 +6,7 @@ Connection settings come from the usual libpq variables (PGPASSWORD etc.).
 
 from __future__ import annotations
 
+import subprocess
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -18,6 +19,33 @@ from psycopg.rows import dict_row
 MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / "api-service" / "src" / "main" / "resources" / "db" / "migration"
 
 PUBLIC_REPO = "https://github.com/spring-projects/spring-boot"
+
+WORKER_DIR = Path(__file__).resolve().parents[1]
+STUB_IMAGE_DIR = WORKER_DIR / "sandbox" / "stub"
+STUB_TEST_IMAGE = "agent-sandbox-stub:test"
+DISK_HELPER_IMAGE_DIR = WORKER_DIR / "sandbox" / "disk-helper"
+DISK_HELPER_TEST_IMAGE = "agent-sandbox-disk-helper:test"
+
+
+def docker_available() -> bool:
+    try:
+        return subprocess.run(["docker", "info"], capture_output=True, timeout=10).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+def build_image(tag: str, context: Path) -> str:
+    """Builds an image (cached layers make repeat builds fast)."""
+    subprocess.run(["docker", "build", "-q", "-t", tag, str(context)], check=True, capture_output=True)
+    return tag
+
+
+def build_stub_image(tag: str = STUB_TEST_IMAGE) -> str:
+    return build_image(tag, STUB_IMAGE_DIR)
+
+
+def build_disk_helper_image(tag: str = DISK_HELPER_TEST_IMAGE) -> str:
+    return build_image(tag, DISK_HELPER_IMAGE_DIR)
 
 
 def ensure_database(url: str) -> None:

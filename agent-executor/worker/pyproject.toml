@@ -18,5 +18,8 @@ packages = ["src/agent_worker"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = [".", "src"]
-markers = ["e2e: starts the real Java API and runs the worker as a process (run with: uv run pytest -m e2e)"]
+markers = [
+    "e2e: starts the real Java API and runs the worker as a process (run with: uv run pytest -m e2e)",
+    "docker: runs real containers; skipped when Docker is not running",
+]
 addopts = "-m 'not e2e'"

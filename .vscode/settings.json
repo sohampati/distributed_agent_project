@@ -1,0 +1,14 @@
+{
+    // The worker's uv venv lives below the workspace root, so VS Code doesn't find it on its own.
+    "python.defaultInterpreterPath": "${workspaceFolder}/agent-executor/worker/.venv/bin/python",
+    // uv marks .venv hidden on macOS and Python skips hidden .pth files, so the editable install of
+    // agent_worker is invisible to the interpreter; point analysis at the sources directly
+    // (src for agent_worker, the worker root for tests.helpers).
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/agent-executor/worker/src",
+        "${workspaceFolder}/agent-executor/worker"
+    ],
+    "python.testing.pytestEnabled": true,
+    "python.testing.cwd": "${workspaceFolder}/agent-executor/worker",
+    "python.testing.pytestArgs": ["tests"]
+}

@@ -22,7 +22,7 @@ from pathlib import Path
 import psycopg
 import pytest
 
-from tests.helpers import ensure_database
+from tests.helpers import DISK_HELPER_TEST_IMAGE, build_disk_helper_image, build_stub_image, docker_available, ensure_database
 
 WORKER_DIR = Path(__file__).resolve().parents[2]
 API_DIR = WORKER_DIR.parent / "api-service"
@@ -130,17 +130,29 @@ def db(e2e_database_url: str, api: Api) -> Iterator[psycopg.Connection]:
         yield conn
 
 
+@pytest.fixture(scope="session")
+def stub_image() -> str:
+    if not docker_available():
+        pytest.fail("Docker is not running (start it with: colima start)")
+    build_disk_helper_image()
+    return build_stub_image()
+
+
 @pytest.fixture
-def run_worker(e2e_database_url: str):
+def run_worker(e2e_database_url: str, stub_image: str, tmp_path: Path):
     """Runs ``python -m agent_worker --once`` as a separate process and parses its JSON output."""
+    workspace_root = tmp_path / "workspaces"
 
     def _run(worker_id: str) -> WorkerRun:
         result = subprocess.run(
             [sys.executable, "-m", "agent_worker", "--once", "--worker-id", worker_id],
             # PYTHONPATH: on macOS uv marks .venv hidden and Python skips hidden .pth files, so the editable
             # install isn't always importable; point at the source directly.
-            env={**os.environ, "DATABASE_URL": e2e_database_url, "PYTHONPATH": str(WORKER_DIR / "src")},
-            capture_output=True, text=True, timeout=30,
+            env={**os.environ, "DATABASE_URL": e2e_database_url, "PYTHONPATH": str(WORKER_DIR / "src"),
+                 "SANDBOX_IMAGE": stub_image, "SANDBOX_TIMEOUT_SECONDS": "60",
+                 "SANDBOX_DISK_SIZE": "256m", "SANDBOX_DISK_HELPER_IMAGE": DISK_HELPER_TEST_IMAGE,
+                 "WORKSPACE_ROOT": str(workspace_root)},
+            capture_output=True, text=True, timeout=120,
         )
         lines = result.stdout.strip().splitlines()
         output = json.loads(lines[-1]) if lines else {}
